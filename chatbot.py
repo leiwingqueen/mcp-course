@@ -194,7 +194,7 @@ def process_query(query):
     messages = [{'role': 'user', 'content': query}]
 
     response = client.messages.create(max_tokens=2024,
-                                      model='claude-3-7-sonnet-20250219',
+                                      model='MiniMax-M2.5',
                                       tools=tools,
                                       messages=messages)
 
@@ -231,7 +231,7 @@ def process_query(query):
                                     }
                                 ]})
                 response = client.messages.create(max_tokens=2024,
-                                                 model='claude-3-7-sonnet-20250219',
+                                                 model='MiniMax-M2.5',
                                                  tools=tools,
                                                  messages=messages)
 
