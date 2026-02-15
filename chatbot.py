@@ -7,10 +7,22 @@ and extract information about them using tool definitions and execution.
 
 import arxiv
 import json
+import logging
 import os
 from typing import List
 from dotenv import load_dotenv
 import anthropic
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('chatbot.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Constants
 PAPER_DIR = "papers"
@@ -190,38 +202,50 @@ def process_query(query):
     Args:
         query: The user's query string
     """
+    logger.info(f"Processing query: {query}")
 
     messages = [{'role': 'user', 'content': query}]
 
-    response = client.messages.create(max_tokens=2024,
-                                      model='MiniMax-M2.5',
-                                      tools=tools,
-                                      messages=messages)
+    try:
+        response = client.messages.create(max_tokens=2024,
+                                          model='MiniMax-M2.5',
+                                          tools=tools,
+                                          messages=messages)
+        logger.info(f"Initial response received, content count: {len(response.content)}")
+    except Exception as e:
+        logger.error(f"Error creating initial message: {str(e)}")
+        raise
 
-    process_query = True
-    while process_query:
+    loop_processing = True
+    while loop_processing:
         assistant_content = []
 
         for content in response.content:
             if content.type == 'text':
-
+                logger.info(f"LLM response text: {content.text[:200]}...")
                 print(content.text)
                 assistant_content.append(content)
 
                 if len(response.content) == 1:
-                    process_query = False
+                    loop_processing = False
 
             elif content.type == 'tool_use':
-
                 assistant_content.append(content)
                 messages.append({'role': 'assistant', 'content': assistant_content})
 
                 tool_id = content.id
                 tool_args = content.input
                 tool_name = content.name
+                logger.info(f"Calling tool: {tool_name}, args: {tool_args}")
                 print(f"Calling tool {tool_name} with args {tool_args}")
 
-                result = execute_tool(tool_name, tool_args)
+                try:
+                    result = execute_tool(tool_name, tool_args)
+                    logger.info(f"Tool {tool_name} executed successfully, result length: {len(result)}")
+                except Exception as e:
+                    logger.error(f"Error executing tool {tool_name}: {str(e)}")
+                    result = f"Error: {str(e)}"
+
                 messages.append({"role": "user",
                                 "content": [
                                     {
@@ -230,14 +254,20 @@ def process_query(query):
                                         "content": result
                                     }
                                 ]})
-                response = client.messages.create(max_tokens=2024,
-                                                 model='MiniMax-M2.5',
-                                                 tools=tools,
-                                                 messages=messages)
+                try:
+                    response = client.messages.create(max_tokens=2024,
+                                                     model='MiniMax-M2.5',
+                                                     tools=tools,
+                                                     messages=messages)
+                    logger.info(f"Response after tool execution, content count: {len(response.content)}")
+                except Exception as e:
+                    logger.error(f"Error creating message after tool execution: {str(e)}")
+                    raise
 
                 if len(response.content) == 1 and response.content[0].type == "text":
+                    logger.info(f"Final response text: {response.content[0].text[:200]}...")
                     print(response.content[0].text)
-                    process_query = False
+                    loop_processing = False
 
 
 def chat_loop():
@@ -250,11 +280,14 @@ def chat_loop():
         try:
             query = input("\nQuery: ").strip()
             if query.lower() == 'quit':
+                logger.info("User exited the chat")
                 break
 
+            logger.info(f"User input: {query}")
             process_query(query)
             print("\n")
         except Exception as e:
+            logger.error(f"Error in chat loop: {str(e)}", exc_info=True)
             print(f"\nError: {str(e)}")
 
 
