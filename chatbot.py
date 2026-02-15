@@ -230,8 +230,8 @@ def process_query(query):
                     loop_processing = False
 
             elif content.type == 'tool_use':
-                assistant_content.append(content)
-                messages.append({'role': 'assistant', 'content': assistant_content})
+                # 将完整的 response.content 添加到消息历史，而不是单个块
+                messages.append({'role': 'assistant', 'content': response.content})
 
                 tool_id = content.id
                 tool_args = content.input
