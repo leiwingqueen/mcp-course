@@ -18,14 +18,14 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('chatbot.log'),
+        logging.FileHandler('../chatbot.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
 # Constants
-PAPER_DIR = "papers"
+PAPER_DIR = "../papers"
 
 
 def search_papers(topic: str, max_results: int = 5) -> List[str]:
