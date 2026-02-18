@@ -208,7 +208,7 @@ def process_query(query):
 
     try:
         response = client.messages.create(max_tokens=2024,
-                                          model='MiniMax-M2.5',
+                                          model='glm-4.7',
                                           tools=tools,
                                           messages=messages)
         logger.info(f"Initial response received, content count: {len(response.content)}")
@@ -256,7 +256,7 @@ def process_query(query):
                                 ]})
                 try:
                     response = client.messages.create(max_tokens=2024,
-                                                     model='MiniMax-M2.5',
+                                                     model='glm-4.7',
                                                      tools=tools,
                                                      messages=messages)
                     logger.info(f"Response after tool execution, content count: {len(response.content)}")
