@@ -1,0 +1,140 @@
+====================================================================================================
+                    MODEL CONTEXT PROTOCOL (MCP) ARCHITECTURE
+====================================================================================================
+
+MCP PROJECTS (SCOPE):
+--------------------
+* MCP Specification - outlines implementation requirements for clients and servers
+* MCP SDKs - SDKs for different programming languages that implement MCP
+* Development Tools - MCP Inspector and other development tools
+* Reference Server Implementations - Reference implementations of MCP servers
+
+================================================================================
+
+MCP ARCHITECTURE LAYERS:
+------------------------
+
+TRANSPORT LAYER (Outer Layer):
+  Stdio Transport                    Streamable HTTP Transport
+  • Local processes                  • Remote server communication
+  • No network overhead              • HTTP POST + Server-Sent Events
+                                     • OAuth auth
+                    |
+                    V
+DATA LAYER (Inner Layer):
+  JSON-RPC 2.0 Protocol
+
+  Lifecycle Management:
+  • Connection init → Capability negotiation → Termination
+
+  Server Features:
+  • Tools - Executable functions
+  • Resources - Context data
+  • Prompts - Interaction templates
+
+  Client Features:
+  • Sampling - Request LLM completions
+  • Elicitation - Get user input
+  • Logging - Debug messages
+
+  Utility Features:
+  • Notifications - Real-time updates
+  • Tasks - Progress tracking
+
+================================================================================
+
+MCP PARTICIPANTS:
+-----------------
+
+┌──────────────────┐
+│   MCP HOST       │  AI Application (Claude Code, Claude Desktop)
+│                  │
+└────────┬─────────┘
+         │ Creates
+         V
+┌──────────────────┐        ┌──────────────────┐
+│  MCP CLIENT 1    │<------>|  MCP SERVER 1    │
+└──────────────────┘        └──────────────────┘
+         │                          ^
+         V                          |
+┌──────────────────┐        ┌──────────────────┐
+│  MCP CLIENT 2    │<------>|  MCP SERVER 2    │
+└──────────────────┘        └──────────────────┘
+
+Example: VS Code → MCP Client 1 → Sentry MCP Server (remote)
+          VS Code → MCP Client 2 → Filesystem Server (local)
+
+================================================================================
+
+MCP PRIMITIVES DETAIL:
+----------------------
+
+SERVER PRIMITIVES (What servers provide to clients):
+
+┌────────────────────┬────────────────────┬────────────────────┐
+│ TOOLS              │ RESOURCES          │ PROMPTS            │
+├────────────────────┼────────────────────┼────────────────────┤
+│ Executable functions│ Data sources       │ Templates          │
+│ • File operations  │ • File contents    │ • System prompts   │
+│ • API calls        │ • Database records │ • Few-shot examples │
+│ • Database queries │ • API responses    │                    │
+│ Methods:           │ Methods:           │ Methods:           │
+│ tools/list,        │ resources/list,    │ prompts/list,      │
+│ tools/call         │ resources/get      │ prompts/get        │
+└────────────────────┴────────────────────┴────────────────────┘
+
+CLIENT PRIMITIVES (What clients provide to servers):
+
+┌────────────────────┬────────────────────┬────────────────────┐
+│ SAMPLING           │ ELICITATION        │ LOGGING            │
+├────────────────────┼────────────────────┼────────────────────┤
+│ Request LLM        │ Get user info/     │ Debug messages     │
+│ completions from   │ confirmation        │ Monitoring         │
+│ client's AI app    │                    │                    │
+│ sampling/complete  │ elicitation/request │ logging/log        │
+└────────────────────┴────────────────────┴────────────────────┘
+
+UTILITY PRIMITIVES:
+• TASKS (Experimental) - Durable execution for deferred results
+• NOTIFICATIONS - Real-time updates (tool changes, etc.)
+
+================================================================================
+
+KEY WORKFLOW:
+-------------
+
+1. MCP Host creates MCP Client for each MCP Server
+2. MCP Client connects to MCP Server via Transport Layer
+3. Data Layer handles JSON-RPC 2.0 protocol communication
+4. Lifecycle Management negotiates capabilities
+5. Server provides Tools, Resources, Prompts to Client
+6. Client provides Sampling, Elicitation, Logging to Server
+7. Notifications enable real-time updates
+
+TRANSPORT EXAMPLES:
+• Local MCP Server: Uses Stdio Transport (single client)
+• Remote MCP Server: Uses Streamable HTTP Transport (multiple clients)
+
+================================================================================
+
+SUMMARY:
+--------
+
+MCP is a client-server protocol with two layers:
+- Transport Layer: Communication mechanisms (Stdio, HTTP)
+- Data Layer: JSON-RPC 2.0 protocol with primitives
+
+Three main participants:
+- MCP Host: AI application that manages clients
+- MCP Client: Maintains connection to server
+- MCP Server: Provides context to clients
+
+Core concepts:
+- Server primitives: Tools, Resources, Prompts
+- Client primitives: Sampling, Elicitation, Logging
+- Lifecycle management and notifications
+
+This architecture enables AI applications to connect to various context providers
+through a standardized protocol.
+
+================================================================================
