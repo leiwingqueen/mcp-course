@@ -5,9 +5,6 @@ from mcp.client.stdio import stdio_client
 from contextlib import AsyncExitStack
 import json
 import asyncio
-import nest_asyncio
-
-nest_asyncio.apply()
 
 load_dotenv()
 
@@ -17,14 +14,26 @@ class MCP_ChatBot:
         self.anthropic = Anthropic()
         # Tools list required for Anthropic API
         self.available_tools = []
-        # Prompts list for quick display 
+        # Prompts list for quick display
         self.available_prompts = []
         # Sessions dict maps tool/prompt names or resource URIs to MCP client sessions
         self.sessions = {}
 
     async def connect_to_server(self, server_name, server_config):
         try:
+            print(f"[DEBUG] Creating StdioServerParameters for {server_name}...")
             server_params = StdioServerParameters(**server_config)
+            print(f"[DEBUG] Creating stdio_client for {server_name}...")
+            stdio_transport = await self.exit_stack.enter_async_context(
+                stdio_client(server_params)
+            )
+            print(f"[DEBUG] Creating session for {server_name}...")
+            read, write = stdio_transport
+            session = await self.exit_stack.enter_async_context(
+                ClientSession(read, write)
+            )
+            print(f"[DEBUG] Initializing session for {server_name}...")
+            await session.initialize()
             stdio_transport = await self.exit_stack.enter_async_context(
                 stdio_client(server_params)
             )
@@ -38,6 +47,7 @@ class MCP_ChatBot:
             try:
                 # List available tools
                 response = await session.list_tools()
+                print(f"[DEBUG] Found {len(response.tools)} tools")
                 for tool in response.tools:
                     self.sessions[tool.name] = session
                     self.available_tools.append({
@@ -45,10 +55,14 @@ class MCP_ChatBot:
                         "description": tool.description,
                         "input_schema": tool.inputSchema
                     })
-            
+                print(f"[DEBUG] Loaded tools: {[t['name'] for t in self.available_tools]}")
+
                 # List available prompts
+                print("[DEBUG] Listing prompts...")
                 prompts_response = await session.list_prompts()
+                print(f"[DEBUG] prompts_response: {prompts_response}")
                 if prompts_response and prompts_response.prompts:
+                    print(f"[DEBUG] Found {len(prompts_response.prompts)} prompts")
                     for prompt in prompts_response.prompts:
                         self.sessions[prompt.name] = session
                         self.available_prompts.append({
@@ -56,18 +70,32 @@ class MCP_ChatBot:
                             "description": prompt.description,
                             "arguments": prompt.arguments
                         })
+                    print(f"[DEBUG] Loaded prompts: {[p['name'] for p in self.available_prompts]}")
+                else:
+                    print("[DEBUG] No prompts available from server")
+
                 # List available resources
+                print("[DEBUG] Listing resources...")
                 resources_response = await session.list_resources()
+                print(f"[DEBUG] resources_response: {resources_response}")
                 if resources_response and resources_response.resources:
+                    print(f"[DEBUG] Found {len(resources_response.resources)} resources")
                     for resource in resources_response.resources:
                         resource_uri = str(resource.uri)
                         self.sessions[resource_uri] = session
-            
+                    print(f"[DEBUG] Loaded resources: {[str(r.uri) for r in resources_response.resources]}")
+                else:
+                    print("[DEBUG] No resources available from server")
+
             except Exception as e:
-                print(f"Error {e}")
+                print(f"Error listing tools/prompts/resources: {e}")
+                import traceback
+                traceback.print_exc()
                 
         except Exception as e:
             print(f"Error connecting to {server_name}: {e}")
+            import traceback
+            traceback.print_exc()
 
     async def connect_to_servers(self):
         try:
@@ -252,7 +280,8 @@ class MCP_ChatBot:
                 print(f"\nError: {str(e)}")
     
     async def cleanup(self):
-        await self.exit_stack.aclose()
+        if self.exit_stack:
+            await self.exit_stack.aclose()
 
 
 async def main():
